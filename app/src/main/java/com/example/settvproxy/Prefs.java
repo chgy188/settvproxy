@@ -119,8 +119,9 @@ public class Prefs {
         sp.edit().putString(KEY_DNS, dns).apply();
     }
 
+    /** UDP 策略：默认开启 SOCKS5 UDP 转发，QUIC 不再被硬丢；HTTP 模式下自动退回丢弃 */
     public int getUdpMode() {
-        return sp.getInt(KEY_UDP_MODE, UDP_DROP);
+        return sp.getInt(KEY_UDP_MODE, UDP_RELAY);
     }
 
     public void setUdpMode(int mode) {

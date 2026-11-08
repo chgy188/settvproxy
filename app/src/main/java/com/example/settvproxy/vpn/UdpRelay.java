@@ -13,6 +13,7 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * SOCKS5 UDP ASSOCIATE 转发器（仅 SOCKS5 模式可用）。
@@ -35,6 +36,12 @@ public final class UdpRelay {
     private final Sink sink;
     private final ConcurrentHashMap<String, UdpSession> sessions = new ConcurrentHashMap<>();
     private volatile boolean running = true;
+    private final AtomicInteger relayFailures = new AtomicInteger(0);
+    private volatile boolean disabled = false;
+
+    public boolean isDisabled() {
+        return disabled;
+    }
 
     public UdpRelay(ProxyVpnService service, Sink sink) {
         this.service = service;
@@ -44,7 +51,7 @@ public final class UdpRelay {
     /** TUN 读线程调用：把应用的 UDP 包交给中继；不阻塞读循环 */
     public void send(int srcIp, int srcPort, int dstIp, int dstPort,
                      byte[] payload, String domain) {
-        if (!running || !service.isUdpAssociateSupported() || payload.length == 0) {
+        if (!running || disabled || !service.isUdpAssociateSupported() || payload.length == 0) {
             return;
         }
         String key = srcIp + ":" + srcPort;
@@ -139,7 +146,18 @@ public final class UdpRelay {
         private void run() {
             try {
                 DatagramSocket ds = new DatagramSocket();
-                if (!owner.service.protect(ds)) {
+                boolean bound = false;
+                android.net.Network network = owner.service.getPhysicalNetwork();
+                if (network != null) {
+                    // 绑定到物理网络，UDP 中继流量不会被自身 VPN 捕获
+                    try {
+                        network.bindSocket(ds);
+                        bound = true;
+                    } catch (IOException e) {
+                        Log.w(TAG, "bind udp socket to physical network failed", e);
+                    }
+                }
+                if (!bound && !owner.service.protect(ds)) {
                     Log.w(TAG, "protect udp socket failed");
                 }
                 ds.setSoTimeout(100);
@@ -186,6 +204,15 @@ public final class UdpRelay {
                 }
             } catch (Exception e) {
                 Log.w(TAG, "udp association ended: " + e);
+                int f = owner.relayFailures.incrementAndGet();
+                if (!owner.disabled && f >= 5) {
+                    owner.disabled = true;
+                    for (UdpSession s : owner.sessions.values()) {
+                        s.close();
+                    }
+                    Log.w(TAG, "UDP relay failed " + f
+                            + " times, disabling (proxy may not support UDP relay); dropping UDP instead");
+                }
             } finally {
                 close();
             }

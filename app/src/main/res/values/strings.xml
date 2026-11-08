@@ -36,7 +36,7 @@
     <string name="udp_relay">SOCKS5 UDP 转发</string>
     <string name="domain_on">开启（fake-IP 远程解析）</string>
     <string name="domain_off">关闭（本地直连 DNS）</string>
-    <string name="settings_hint">域名透传开启时，DNS 由本地伪造 A 记录，代理端按域名远程解析与分流；关闭时 DNS 直连填写的上游。UDP 转发仅在 SOCKS5 模式生效，应用过滤仅作用于 VPN 全局模式。修改配置后需重新开启代理才会生效。</string>
+    <string name="settings_hint">域名透传开启时，DNS 由本地伪造 A 记录，代理端按域名远程解析与分流；关闭时 DNS 直连填写的上游。UDP 转发默认开启、仅在 SOCKS5 模式生效（HTTP 模式自动退回丢弃），应用过滤仅作用于 VPN 全局模式。修改配置后需重新开启代理才会生效。</string>
     <string name="msg_udp_http_only">UDP 转发仅支持 SOCKS5，请先在设置页切换代理协议</string>
 
     <!-- 应用过滤 -->

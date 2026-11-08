@@ -7,6 +7,9 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
@@ -32,12 +35,12 @@ import java.util.Set;
  * VpnService 全局代理模式。
  *
  * 建立 TUN 接口捕获设备 IPv4 流量，由 {@link TunLoop} 转发到 SOCKS5 / HTTP CONNECT 代理。
- * 到代理服务器本身的 Socket 必须通过 {@code protect()} 排除，否则会被自己捕获形成死循环。
+ * 到代理服务器的 socket 都绑定在 VPN 建立前找到的物理网络上，避免被自身捕获形成环路。
  *
  * 支持：
  * - SOCKS5 无认证 / 用户名密码认证（RFC 1929），HTTP CONNECT Basic 认证；
  * - SOCKS5 UDP ASSOCIATE 控制连接，供 {@link com.example.settvproxy.vpn.UdpRelay} 转发 UDP；
- * - 应用过滤：全部 / 排除选中 / 仅允许选中。
+ * - 应用过滤：全部 / 排除选中 / 仅允许选中（默认不过滤，分流交给代理端）。
  */
 public class ProxyVpnService extends VpnService {
 
@@ -65,6 +68,8 @@ public class ProxyVpnService extends VpnService {
     private volatile String proxyUser = "";
     private volatile String proxyPass = "";
     private volatile boolean hasAuth;
+    /** VPN 建立前找到的物理网络，所有到代理的 socket 都从它出去 */
+    private volatile Network physicalNetwork;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -133,6 +138,11 @@ public class ProxyVpnService extends VpnService {
         hasAuth = !proxyUser.isEmpty();
         boolean udpRelayEnabled = prefs.isUdpRelayEnabled();
         boolean domainPassthrough = prefs.isDomainPassthrough();
+        // 必须在 establish() 之前取物理网络：VPN 建好后默认网络会变成 tun0
+        physicalNetwork = findPhysicalNetwork();
+        Log.d(TAG, "physical network=" + physicalNetwork
+                + " udpRelay=" + udpRelayEnabled
+                + " domainPassthrough=" + domainPassthrough);
 
         startForegroundCompat();
 
@@ -241,12 +251,46 @@ public class ProxyVpnService extends VpnService {
         return socks5;
     }
 
+    /** 供 UdpRelay / TunLoop 把 socket 绑定到物理网络，彻底绕开自身 VPN */
+    public Network getPhysicalNetwork() {
+        return physicalNetwork;
+    }
+
+    /** 目标是否就是代理服务器自己（某些常驻 App 缓存了旧的 HTTP 代理设置时会连到这里） */
+    public boolean isProxyEndpoint(int ip, int port) {
+        return ip == proxyIp && port == proxyPort;
+    }
+
+    /** 找一个具备 INTERNET 能力且不是 VPN 的网络（通常是 WiFi） */
+    private Network findPhysicalNetwork() {
+        ConnectivityManager cm =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) {
+            return null;
+        }
+        for (Network network : cm.getAllNetworks()) {
+            NetworkCapabilities caps = cm.getNetworkCapabilities(network);
+            if (caps != null
+                    && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    && !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                return network;
+            }
+        }
+        return null;
+    }
+
     /**
      * 建立到目标的 TCP 代理隧道。返回的 Socket 已完成握手，读写即为目标服务器的原始字节流。
      * domain 非空（由 fake-IP 还原）时用 SOCKS5 ATYP=DOMAIN / HTTP CONNECT 域名形式，
      * 由代理端远程解析并按域名分流；否则按 ATYP=IPv4 / IP 形式连接。
      */
     public Socket openTunnel(int targetIp, int targetPort, String domain) throws IOException {
+        if (domain == null && targetIp == proxyIp && targetPort == proxyPort) {
+            // 目标就是代理服务器自己：直接把字节送到代理端口原样转发。
+            // 若再做一次 SOCKS5/HTTP 握手就成了「通过代理连代理」，会不断派生无效连接。
+            Log.d(TAG, "proxy endpoint direct passthrough");
+            return newSocketToProxy();
+        }
         Log.d(TAG, "tunnel " + (domain != null && !domain.isEmpty()
                 ? "DOMAIN " + domain : "IP " + Packets.ipToString(targetIp))
                 + ":" + targetPort);
@@ -265,9 +309,14 @@ public class ProxyVpnService extends VpnService {
     }
 
     private Socket newSocketToProxy() throws IOException {
-        Socket socket = new Socket();
-        if (!protect(socket)) {
-            Log.w(TAG, "protect failed, proxy connection may loop");
+        Network network = physicalNetwork;
+        // 从物理网络的 SocketFactory 创建，连接天然不经过 tun0，不依赖 protect() 是否成功
+        Socket socket = (network != null)
+                ? network.getSocketFactory().createSocket()
+                : new Socket();
+        if (network == null && !protect(socket)) {
+            // 自身 UID 已被 addDisallowedApplication 排除，protect 返回 false 不代表环路
+            Log.d(TAG, "protect() unavailable, relying on excluded self UID");
         }
         socket.connect(new InetSocketAddress(Packets.ipToString(proxyIp), proxyPort),
                 CONNECT_TIMEOUT_MS);

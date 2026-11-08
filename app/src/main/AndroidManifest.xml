@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 读取/修改 WiFi 状态（用于系统代理模式的备用方案） -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />

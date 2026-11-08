@@ -115,6 +115,14 @@ public final class TunLoop implements TcpConnection.Sink, UdpRelay.Sink {
                 // 域名透传关闭，或报文无法解析：直连上游 DNS
                 forwardDns(ip, udp);
             } else if (udpRelay != null) {
+                if (udpRelay.isDisabled()) {
+                    // 代理无 UDP 中继端口，等同丢弃，让客户端快速回退 TCP
+                    return;
+                }
+                if (service.isProxyEndpoint(ip.dst, udp.dstPort)) {
+                    // 发往代理端口的 UDP 不再封装转发，避免代理把包又发给自己
+                    return;
+                }
                 String domain = domainPassthrough ? fakeDns.lookup(ip.dst) : null;
                 if (domainPassthrough && fakeDns.isFakeIp(ip.dst) && domain == null) {
                     // fake-IP 映射已丢失：丢弃，让应用重新发起 DNS 查询
@@ -173,7 +181,17 @@ public final class TunLoop implements TcpConnection.Sink, UdpRelay.Sink {
             DatagramSocket sock = null;
             try {
                 sock = new DatagramSocket();
-                if (!service.protect(sock)) {
+                boolean bound = false;
+                android.net.Network network = service.getPhysicalNetwork();
+                if (network != null) {
+                    try {
+                        network.bindSocket(sock);
+                        bound = true;
+                    } catch (IOException e) {
+                        Log.w(TAG, "bind dns socket to physical network failed", e);
+                    }
+                }
+                if (!bound && !service.protect(sock)) {
                     Log.w(TAG, "protect dns socket failed");
                 }
                 sock.setSoTimeout(5000);

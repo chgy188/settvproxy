@@ -9,7 +9,7 @@ Android TV 一键式网络代理工具。首页只保留一个「开启 / 关闭
 | 模式 | 原理 | 覆盖范围 | 是否需要授权 |
 |---|---|---|---|
 | **系统代理** | 写 `Settings.Global.http_proxy` | 仅主动遵循系统代理的 App 的 HTTP/HTTPS(TCP) | 需 adb 授予 `WRITE_SECURE_SETTINGS` |
-| **VPN 全局** | `VpnService` 建 TUN 捕获流量，转发到 SOCKS5 / HTTP CONNECT 代理 | 所有 App 的 TCP + DNS，UDP 按策略转发或丢弃 | 首次需确认系统 VPN 连接对话框 |
+| **VPN 全局** | `VpnService` 建 TUN 捕获流量，转发到 SOCKS5 / HTTP CONNECT 代理 | 所有 App 的 TCP + DNS + UDP | 首次需确认系统 VPN 连接对话框 |
 
 VPN 全局模式是让 YouTube 等使用 QUIC/UDP 的视频应用也能走代理的关键。开启「域名透传」后，
 DNS 由本地 fake-IP 代答，代理端拿到的是**域名**而不是墙内侧解析出的 IP，按域名分流与远程 DNS 才能生效。
@@ -22,8 +22,10 @@ DNS 由本地 fake-IP 代答，代理端拿到的是**域名**而不是墙内侧
 - **fake-IP + 域名透传（默认开启）**：本地伪造 DNS A 记录（`198.18.0.0/16`），AAAA / HTTPS 返回 NODATA
   强制走 IPv4；TCP 与 UDP 请求用 SOCKS5 `ATYP=DOMAIN` 或 HTTP CONNECT 域名形式发给代理，由代理端远程解析。
 - 协议支持：HTTP CONNECT（含 Basic 认证）、SOCKS5（无认证 / 用户名密码认证 RFC 1929）。
-- UDP 策略：丢弃（默认，强制 QUIC 回退 TCP）或 SOCKS5 UDP ASSOCIATE 转发。
-- 应用过滤：全部应用 / 排除选中走直连 / 仅允许选中走代理。
+- UDP 策略：**SOCKS5 UDP ASSOCIATE 转发（默认，QUIC 不再被硬丢）**；可切回「丢弃」强制 QUIC 回退 TCP。
+  HTTP 模式下自动退回丢弃。
+- 应用过滤：全部应用（默认不过滤）/ 排除选中走直连 / 仅允许选中走代理。
+  **是否走代理、怎么分流由代理服务器的规则决定**，App 默认不干预。
 - 正式 PNG 启动图标（mdpi ~ xxxhdpi 五档）与 Android TV 横幅（`320x180`）。
 - 系统代理模式默认例外列表：`localhost`、`127.0.0.1`；配置持久化，重启后保留。
 
@@ -42,7 +44,7 @@ settvproxy/
         │   ├── SettingsActivity.java      # 统一设置页
         │   ├── AppPickerActivity.java     # 应用过滤列表与过滤模式
         │   ├── ProxyManager.java          # 系统全局代理（主/备方案）
-        │   ├── ProxyVpnService.java       # VpnService、认证、SOCKS5/HTTP 握手、应用过滤
+        │   ├── ProxyVpnService.java       # VpnService、物理网络绑定、认证、握手、应用过滤
         │   ├── Prefs.java                 # 配置持久化
         │   └── vpn/
         │       ├── FakeDns.java           # fake-IP 池、DNS 应答构造、域名映射
@@ -97,8 +99,9 @@ adb shell pm grant com.example.settvproxy android.permission.WRITE_SECURE_SETTIN
    - **DNS**：仅在关闭「域名透传」时作为直连上游使用，只支持 IPv4 地址。
    - **代理账号 / 密码**：HTTP Basic 与 SOCKS5 用户名密码认证共用，留空即无认证。
    - **域名透传**：点击在「开启（fake-IP 远程解析）」与「关闭（本地直连 DNS）」间切换。
-   - **UDP 策略**：丢弃 / SOCKS5 UDP 转发；仅 SOCKS5 模式可开启转发。
-   - **应用过滤**：打开应用选择页，方向键移动、确定键勾选，顶部按钮循环切换过滤模式。
+   - **UDP 策略**：默认「SOCKS5 UDP 转发」，QUIC 走 UDP 不再被丢弃；可切回「丢弃」强制回退 TCP。
+     仅 SOCKS5 模式生效，HTTP 模式自动退回丢弃。
+   - **应用过滤**：默认不过滤，分流交给代理端；需要时再打开应用选择页配置。
 5. 修改任何配置后需**重新开启代理**才会生效。
 
 ## 实现细节
@@ -125,23 +128,38 @@ adb shell pm grant com.example.settvproxy android.permission.WRITE_SECURE_SETTIN
 - HTTP CONNECT：配置了账号时附加 `Proxy-Authorization: Basic <base64>`。
 - `ProxyVpnService.socks5Negotiate()` 被 TCP CONNECT 与 UDP ASSOCIATE 共用。
 
-### UDP 转发
+### 防止「代理连代理」自环
 
-每个本地 UDP 端点建立一条独立关联（一条 UDP ASSOCIATE 控制连接 + 一个 `protect()` 过的
+某些常驻 App 会缓存旧的 HTTP 代理设置，周期性连接 `代理服务器IP:端口`。这些包进入 TUN 后，
+若当成普通连接再去做一次 SOCKS5 / HTTP 握手，就会不断派生「通过代理连代理」的无效连接，
+拖慢所有请求。处理方式：
+
+- 在 `establish()` **之前**找到一个具备 INTERNET 能力且不是 VPN 的物理网络（通常是 WiFi）；
+- 所有到代理的 TCP socket 用 `Network.getSocketFactory().createSocket()` 创建，
+  UDP / DNS socket 用 `Network.bindSocket()` 绑定，连接天然不经过 `tun0`，不再依赖
+  `VpnService.protect()` 是否返回 true；找不到物理网络时才回退到 `protect()`；
+- `TunLoop` 丢弃目标为代理端点的 UDP 包；
+- `ProxyVpnService.openTunnel()` 识别目标为代理端点的 TCP 连接时，返回一条直接连到代理端口的裸
+  Socket，字节原样转发，不做二次握手。
+
+### UDP 转发（默认开启，仅 SOCKS5 模式）
+
+每个本地 UDP 端点建立一条独立关联（一条 UDP ASSOCIATE 控制连接 + 一个绑定到物理网络的
 DatagramSocket）。SOCKS5 UDP 中继没有多路复用标识，独立关联保证回包能准确映射回原始本地端口。
 控制连接关闭即代表中继失效；会话 60 秒无活动自动回收。
 
 - 请求的 `DST.ADDR` 用 `0.0.0.0`，由服务端按实际来源判定；
 - 数据封装为 `RSV(2) FRAG(0) ATYP=(IPv4 或 DOMAIN) ADDR PORT(2) DATA`；
 - 分片包（FRAG≠0）、IPv6 回包不支持，直接丢弃；
-- UDP 53 由本地 fake DNS 代答，不走中继。
+- UDP 53 由本地 fake DNS 代答，不走中继；
+- 代理端需开启 UDP ASSOCIATE（SOCKS5 握手返回 `REP=0` 即支持），否则应切回「丢弃 UDP」。
 
 ### 应用过滤
 
 `VpnService.Builder.addAllowedApplication()` 与 `addDisallowedApplication()` 互斥，实现中按模式二选一：
 白名单模式下只调 `addAllowedApplication`，此时应用自身不在名单里即自动直连；
 其余模式调 `addDisallowedApplication`（含自身包名）。应用列表来自 LAUNCHER / LEANBACK_LAUNCHER 查询，
-Manifest 中已声明 `<queries>` 以满足 Android 11+ 包可见性限制。
+Manifest 中已声明 `<queries>` 以满足 Android 11+ 包可见性限制。默认不过滤，分流规则由代理端决定。
 
 ## 已知边界
 
@@ -156,20 +174,22 @@ VPN 模式是**纯 Java 实现的轻量 TCP/UDP-over-TUN 桥**，生产环境若
 - UDP 中继不支持分片与 IPv6 回包；部分代理服务端未开启 UDP ASSOCIATE 时会失败，
   此时应切回「丢弃 UDP」策略。
 - 代理主机若填域名，会在建立 VPN **之前**解析并缓存为 IP，避免 DNS 死循环。
-- 到代理服务器的 Socket 通过 `VpnService.protect()` 排除，避免流量被自身捕获形成环路。
 
 ## 验证是否生效
 
 ```bash
 adb shell settings get global http_proxy        # 系统代理模式
 adb shell dumpsys connectivity | grep -i vpn    # VPN 模式
-adb logcat -d -s TunLoop ProxyVpnService        # fake DNS 与隧道目标
+adb logcat -d -s TunLoop ProxyVpnService UdpRelay
 aapt2 dump badging app-debug.apk | grep application-icon   # 图标资源
 ```
 
-- 出现 `fake dns answer ...B` 表示 DNS 已由本地 fake-IP 代答，没有走墙内侧上游；
-- 出现 `tunnel DOMAIN www.youtube.com:443` 表示域名已透传给代理（若为 `tunnel IP ...` 则仍是 IP 形式）；
-- 出现 `tunnel DOMAIN pluto.tv:443` 后观察 Pluto TV 登录是否不再超时。
+- `physical network=... udpRelay=true domainPassthrough=true` 表示 UDP 转发已启用且 socket 绑定物理网络；
+- `fake dns answer ...B` 表示 DNS 已由本地 fake-IP 代答，没有走墙内侧上游；
+- `tunnel DOMAIN www.youtube.com:443` 表示域名已透传给代理（若为 `tunnel IP ...` 则仍是 IP 形式）；
+- `proxy endpoint direct passthrough` 表示缓存了旧代理设置的 App 已被直连透传；
+- `tunnel IP <代理服务器地址>:<端口>` 应为 0 次，出现即说明仍有自环；
+- `protect failed, proxy connection may loop` 不应再出现。
 
 ## 自定义
 
