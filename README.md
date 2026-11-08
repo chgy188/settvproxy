@@ -152,7 +152,7 @@ DatagramSocket）。SOCKS5 UDP 中继没有多路复用标识，独立关联保�
 - 数据封装为 `RSV(2) FRAG(0) ATYP=(IPv4 或 DOMAIN) ADDR PORT(2) DATA`；
 - 分片包（FRAG≠0）、IPv6 回包不支持，直接丢弃；
 - UDP 53 由本地 fake DNS 代答，不走中继；
-- 代理端需开启 UDP ASSOCIATE（SOCKS5 握手返回 `REP=0` 即支持），否则应切回「丢弃 UDP」。
+- 代理端需开启 UDP ASSOCIATE（SOCKS5 握手返回 `REP=0` 即支持）。若代理端实际未开 UDP 中继（握手成功但 UDP 数据面不可达），App 会在 UDP 关联连续失败 5 次后**自动降级为丢弃**（仅打印一次日志），效果等同于「丢弃 UDP」策略，不会更慢；代理补上 UDP 中继后重开 VPN 即自动恢复转发。
 
 ### 应用过滤
 
