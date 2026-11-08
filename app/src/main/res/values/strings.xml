@@ -1,0 +1,70 @@
+<resources>
+    <string name="app_name">电视代理</string>
+
+    <!-- 首页：一键开关 -->
+    <string name="settings">设置</string>
+    <string name="enable">开启代理</string>
+    <string name="disable">关闭代理</string>
+    <string name="status_running">代理已开启</string>
+    <string name="status_stopped">代理已关闭</string>
+    <string name="status_detail_vpn">%1$s · %2$s:%3$s（VPN 全局）</string>
+    <string name="status_detail_system">%1$s · %2$s:%3$s（系统代理）</string>
+    <string name="status_detail_none">按方向键选择「开启代理」并确认</string>
+    <string name="main_hint">首次开启需确认系统 VPN 连接；开启 / 关闭成功后自动返回桌面。全部配置在「设置」中。</string>
+    <string name="msg_config_missing">请先在「设置」中填写代理主机和端口</string>
+    <string name="msg_stop_timeout">关闭超时，请再点一次关闭代理</string>
+
+    <!-- 设置页：全部配置 -->
+    <string name="settings_title">设置</string>
+    <string name="host_label">代理主机：</string>
+    <string name="port_label">端口：</string>
+    <string name="dns_label">DNS：</string>
+    <string name="mode_label">工作模式：</string>
+    <string name="type_label">代理协议：</string>
+    <string name="user_label">代理账号：</string>
+    <string name="pass_label">代理密码：</string>
+    <string name="udp_label">UDP 策略：</string>
+    <string name="domain_label">域名透传：</string>
+    <string name="app_filter_label">应用过滤：</string>
+    <string name="back">返回</string>
+
+    <string name="mode_system">系统代理</string>
+    <string name="mode_vpn">VPN 全局</string>
+    <string name="type_http">HTTP</string>
+    <string name="type_socks5">SOCKS5</string>
+    <string name="udp_drop">丢弃（强制回退 TCP）</string>
+    <string name="udp_relay">SOCKS5 UDP 转发</string>
+    <string name="domain_on">开启（fake-IP 远程解析）</string>
+    <string name="domain_off">关闭（本地直连 DNS）</string>
+    <string name="settings_hint">域名透传开启时，DNS 由本地伪造 A 记录，代理端按域名远程解析与分流；关闭时 DNS 直连填写的上游。UDP 转发仅在 SOCKS5 模式生效，应用过滤仅作用于 VPN 全局模式。修改配置后需重新开启代理才会生效。</string>
+    <string name="msg_udp_http_only">UDP 转发仅支持 SOCKS5，请先在设置页切换代理协议</string>
+
+    <!-- 应用过滤 -->
+    <string name="filter_none">全部应用</string>
+    <string name="filter_exclude">排除选中（%1$d）</string>
+    <string name="filter_only">仅允许选中（%1$d）</string>
+    <string name="filter_mode_none">不过滤</string>
+    <string name="filter_mode_exclude">排除选中 → 直连</string>
+    <string name="filter_mode_only">仅允许选中 → 走代理</string>
+    <string name="app_picker_title">选择应用</string>
+    <string name="app_picker_hint">方向键移动，确定键勾选 / 取消；选择即时保存。</string>
+    <string name="app_picker_empty">未找到可启动的应用</string>
+    <string name="app_filter_hint">过滤仅作用于 VPN 全局模式，重新开启代理后生效。</string>
+
+    <!-- VPN 状态与错误 -->
+    <string name="vpn_notification">VPN 全局代理正在运行</string>
+    <string name="msg_enabled">代理已开启：%1$s:%2$s</string>
+    <string name="msg_disabled">代理已关闭</string>
+    <string name="msg_no_perm">无权限：请在电脑执行\nadb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="msg_vpn_starting">VPN 全局代理正在启动…</string>
+    <string name="msg_vpn_started">VPN 全局代理已开启</string>
+    <string name="msg_vpn_failed">VPN 启动失败：%1$s</string>
+    <string name="msg_vpn_timeout">启动超时，请确认 VPN 授权已完成，或重新点一次开启代理</string>
+    <string name="msg_vpn_cancel">VPN 授权被取消，未开启代理</string>
+
+    <string name="err_vpn_bad_addr">代理地址或端口无效</string>
+    <string name="err_vpn_resolve">无法解析代理主机或 DNS 地址</string>
+    <string name="err_vpn_establish">系统建立 VPN 失败</string>
+    <string name="err_vpn_not_prepared">VPN 授权未完成，请重新开启</string>
+    <string name="err_vpn_tun">TUN 读写线程启动失败</string>
+</resources>

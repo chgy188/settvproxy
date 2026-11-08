@@ -1,0 +1,15 @@
+# Gradle / Android 构建产物
+.gradle/
+build/
+app/build/
+*.apk
+*.ap_
+local.properties
+
+# IDE / 系统文件
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild
+.cxx/

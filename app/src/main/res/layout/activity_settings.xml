@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0e0e0e"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_title"
+            android:textSize="30sp"
+            android:textColor="#ffffff"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 代理主机 / 端口 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/host_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff" />
+
+            <EditText
+                android:id="@+id/etHost"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:singleLine="true"
+                android:inputType="textUri"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textColorHint="#666666"
+                android:padding="8dp"
+                android:hint="192.168.10.173"
+                android:nextFocusRight="@+id/etPort"
+                android:nextFocusDown="@+id/etDns" />
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/port_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:layout_marginStart="16dp" />
+
+            <EditText
+                android:id="@+id/etPort"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:singleLine="true"
+                android:inputType="number"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textColorHint="#666666"
+                android:padding="8dp"
+                android:hint="10808"
+                android:nextFocusLeft="@+id/etHost"
+                android:nextFocusDown="@+id/btnMode" />
+        </LinearLayout>
+
+        <!-- DNS / 工作模式 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="6dp">
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/dns_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff" />
+
+            <EditText
+                android:id="@+id/etDns"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:singleLine="true"
+                android:inputType="textUri"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textColorHint="#666666"
+                android:padding="8dp"
+                android:hint="192.168.10.1"
+                android:nextFocusRight="@+id/btnMode"
+                android:nextFocusDown="@+id/btnType" />
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/mode_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:layout_marginStart="16dp" />
+
+            <Button
+                android:id="@+id/btnMode"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:text="@string/mode_vpn"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textAllCaps="false"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:padding="10dp"
+                android:nextFocusDown="@+id/btnDomain" />
+        </LinearLayout>
+
+        <!-- 代理协议 / 域名透传 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="6dp">
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/type_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff" />
+
+            <Button
+                android:id="@+id/btnType"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:text="@string/type_http"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textAllCaps="false"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:padding="10dp"
+                android:nextFocusRight="@+id/btnDomain"
+                android:nextFocusDown="@+id/etUser" />
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/domain_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:layout_marginStart="16dp" />
+
+            <Button
+                android:id="@+id/btnDomain"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:text="@string/domain_on"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textAllCaps="false"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:padding="10dp"
+                android:nextFocusDown="@+id/etPass" />
+        </LinearLayout>
+
+        <!-- 代理账号 / 密码 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="6dp">
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/user_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff" />
+
+            <EditText
+                android:id="@+id/etUser"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:singleLine="true"
+                android:inputType="text"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textColorHint="#666666"
+                android:padding="8dp"
+                android:hint="留空即无认证"
+                android:nextFocusRight="@+id/etPass"
+                android:nextFocusDown="@+id/btnUdpMode" />
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/pass_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:layout_marginStart="16dp" />
+
+            <EditText
+                android:id="@+id/etPass"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:singleLine="true"
+                android:inputType="textPassword"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textColorHint="#666666"
+                android:padding="8dp"
+                android:nextFocusDown="@+id/btnAppFilter" />
+        </LinearLayout>
+
+        <!-- UDP 策略 / 应用过滤 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="6dp">
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/udp_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff" />
+
+            <Button
+                android:id="@+id/btnUdpMode"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:text="@string/udp_drop"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textAllCaps="false"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:padding="10dp"
+                android:nextFocusRight="@+id/btnAppFilter"
+                android:nextFocusDown="@+id/btnBack" />
+
+            <TextView
+                android:layout_width="130dp"
+                android:layout_height="wrap_content"
+                android:text="@string/app_filter_label"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:layout_marginStart="16dp" />
+
+            <Button
+                android:id="@+id/btnAppFilter"
+                android:layout_width="280dp"
+                android:layout_height="wrap_content"
+                android:text="@string/filter_none"
+                android:textSize="18sp"
+                android:textColor="#ffffff"
+                android:textAllCaps="false"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:padding="10dp"
+                android:nextFocusDown="@+id/btnBack" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="16dp">
+
+            <Button
+                android:id="@+id/btnBack"
+                android:layout_width="220dp"
+                android:layout_height="wrap_content"
+                android:text="@string/back"
+                android:textSize="20sp"
+                android:textColor="#ffffff"
+                android:textAllCaps="false"
+                android:background="@drawable/focus_bg"
+                android:focusable="true"
+                android:padding="12dp"
+                android:nextFocusUp="@+id/btnUdpMode" />
+
+            <TextView
+                android:id="@+id/tvMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="17sp"
+                android:textColor="#ffcc00"
+                android:layout_marginStart="24dp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="860dp"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_hint"
+            android:textSize="14sp"
+            android:textColor="#888888"
+            android:gravity="center"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+</ScrollView>

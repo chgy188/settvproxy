@@ -1,0 +1,8 @@
+<resources>
+    <!-- 深色 TV 风格主题，无标题栏 -->
+    <style name="Theme.SetTVProxy" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:colorBackground">#0e0e0e</item>
+        <item name="android:windowBackground">#0e0e0e</item>
+        <item name="android:colorAccent">#4fa3ff</item>
+    </style>
+</resources>
